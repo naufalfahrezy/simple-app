@@ -2,26 +2,33 @@ pipeline {
   agent any
   environment {
     IMAGE_NAME = 'naufalfahrezy/simple-app'
-    REGISTRY = 'https://index.docker.io/v1/'
-    REGISTRY_CREDENTIALS = 'dckr_pat_LP5mrIx5hEZpBRw4-P_Kp-K4NzQ'
+    REGISTRY_CREDENTIALS = 'dockerhub-credentials'
   }
   stages {
-    stage('Checkout') { steps { checkout scm } }
-    stage('Build') { steps { sh 'echo "Mulai build aplikasi"' } }
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+    stage('Build') {
+      steps {
+        bat 'echo "Build di Windows"'
+      }
+    }
     stage('Build Docker Image') {
-      steps { script { docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}") } }
+      steps {
+        bat """docker build -t ${env.IMAGE_NAME}:${env.BUILD_NUMBER} ."""
+      }
     }
     stage('Push Docker Image') {
       steps {
-        script {
-          docker.withRegistry(REGISTRY, REGISTRY_CREDENTIALS) {
-            def tag = "${IMAGE_NAME}:${env.BUILD_NUMBER}"
-            docker.image(tag).push()
-            docker.image(tag).push('latest')
-          }
+        withCredentials([usernamePassword(credentialsId: env.REGISTRY_CREDENTIALS, usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+          bat """docker login -u %USER% -p %PASS%"""
+          bat """docker push ${env.IMAGE_NAME}:${env.BUILD_NUMBER}"""
+          bat """docker tag ${env.IMAGE_NAME}:${env.BUILD_NUMBER} ${env.IMAGE_NAME}:latest"""
+          bat """docker push ${env.IMAGE_NAME}:latest"""
         }
       }
     }
   }
-  post { always { echo 'Selesai build' } }
 }
